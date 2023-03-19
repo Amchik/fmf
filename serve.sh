@@ -16,6 +16,7 @@ fi
 read ctx
 path="$(echo "$ctx" | sed 's/GET \/\([^ \?\#]*\)[^ ]* HTTP\/1\.1/\1/' | sed 's/\r//g')"
 
+[[ "$path" == *".."* ]] && path=404
 [[ "$path" = "" ]] && path=index.html
 path="out/$path"
 path="$(echo "$path" | sed 's/\.\(txt\)$/.html/')"

@@ -1,24 +1,36 @@
 #!/bin/bash
 
+if [[ "$1" = "clean" ]]; then
+	echo "Cleanup"
+	rm -rf out/ bin/
+	exit 0
+fi
+
 [[ "$1" = "--release" ]] && is_debug=false || is_debug=true
 debug() {
 	[ $is_debug = true ]
 	return $?
 }
 
-if debug && which tcc >/dev/null 2>&1; then
-	tcc -o fmf fmf.c || exit 1
-	tccver="$(tcc --version)"
+mkdir -p bin/
+if which tcc >/dev/null 2>&1; then
+	tcc -o bin/fmf fmf.c || exit 1
+else
+	cc -o bin/fmt fmt.c || exit 1
 fi
+fmf=../bin/fmf
 
 rm -rf out/
 mkdir -p out/
-for file in *.fmf; do
+cd src/
+for file in $(find -iname '*.fmf'); do
 	name="${file%%.fmf}"
-	sed begin.html \
-		-e 's/${name}/'"$name"'/g' > out/$name.html
-	./fmf "$file" >> out/$name.html || exit 2
-	sed end.html \
-		-e 's/${name}/'"$name"'/g' >> out/$name.html
+	bname="$(basename "$name")"
+	mkdir -p ../out/$(dirname "$name")
+	sed ../parts/begin.html \
+		-e 's/${name}/'"$bname"'/g' > ../out/$name.html
+	$fmf "$file" >> ../out/$name.html || exit 2
+	sed ../parts/end.html \
+		-e 's/${name}/'"$bname"'/g' >> ../out/$name.html
 done
 
