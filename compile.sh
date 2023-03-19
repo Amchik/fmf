@@ -6,11 +6,9 @@ debug() {
 	return $?
 }
 
-if debug; then
-	tcc -o fmf fmf.c
+if debug && which tcc >/dev/null 2>&1; then
+	tcc -o fmf fmf.c || exit 1
 	tccver="$(tcc --version)"
-else
-	clang -O3 -o fmf fmf.c
 fi
 
 rm -rf out/
@@ -19,11 +17,8 @@ for file in *.fmf; do
 	name="${file%%.fmf}"
 	sed begin.html \
 		-e 's/${name}/'"$name"'/g' > out/$name.html
-	./fmf "$file" >> out/$name.html
+	./fmf "$file" >> out/$name.html || exit 2
 	sed end.html \
 		-e 's/${name}/'"$name"'/g' >> out/$name.html
-	if debug; then
-		echo "<!-- generated on $(date --utc), $tccver -->" >> out/$name.html
-	fi
 done
 

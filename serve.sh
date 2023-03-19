@@ -21,12 +21,14 @@ path="out/$path"
 path="$(echo "$path" | sed 's/\.\(txt\)$/.html/')"
 [[ "${path##*.}" = "$path" ]] && path="$path.html"
 
-./compile.sh
-
-status="200 OK"
-if ! test -e "$path" || [[ "$path" = "out/404.html" ]]; then
+if ! ./compile.sh > /tmp/serve-log.txt 2>&1; then
+	status="500 INTERNAL SERVER ERROR"
+	path="/tmp/serve-log.txt"
+elif ! test -e "$path" || [[ "$path" = "out/404.html" ]]; then
 	status="404 NOT FOUND"
 	path="out/404.html"
+else
+	status="200 OK"
 fi
 
 len=$(wc -c "$path")
@@ -49,7 +51,6 @@ esac
 echo "HTTP/1.1 $status"
 echo "Content-Type: $type"
 echo "Content-Length: ${len%% *}"
-echo "Server: $(bash --version | head -n1)"
 echo
 cat "$path"
 
