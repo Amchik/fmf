@@ -16,7 +16,7 @@ mkdir -p bin/
 if which tcc >/dev/null 2>&1; then
 	tcc -o bin/fmf fmf.c || exit 1
 else
-	cc -o bin/fmt fmt.c || exit 1
+	cc -o bin/fmf fmf.c || exit 1
 fi
 fmf=../bin/fmf
 
