@@ -27,7 +27,7 @@ get_line_type(const char *line, ssize_t nread, size_t *off) {
 	if (line[i] == '#') {
 		for (h = 0; line[i + h] == '#'; ++h);
 		*off = i + h;
-		return(h + 1); /* heading */
+		return(h); /* heading */
 	}
 
 	if (line[i] == '*' || line[i] == '@') {
@@ -68,6 +68,7 @@ parse_code_meta(const char *line, size_t offset, ssize_t nread) {
 	str[offset2 - offset +12] = ':';
 	str[offset2 - offset +13] = ' ';
 	memcpy(str + offset2 - offset + 14, line + offset2 + 1, nread - offset2 - 2);
+	str[nread - offset + 12] = 0;
 
 	return(str);
 }
