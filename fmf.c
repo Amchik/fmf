@@ -2,12 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __STDC_VERSION__
+#if __STDC_VERSION__ < 199901L
+typedef signed long ssize_t;
+#endif
+#else
+#define ssize_t signed long
+#endif
+
 enum State {
 	S_NOTHING,
 	S_IN_P,
 	S_IN_CODE, /* here: codeblock, ```, <pre> */
 	S_IN_UL,
-	S_IN_OL,
+	S_IN_OL
 };
 #define F_LI_WAIT_CLOSE 1
 
@@ -30,7 +38,7 @@ get_line_type(const char *line, ssize_t nread, size_t *off) {
 		return(h); /* heading */
 	}
 
-	if (line[i] == '*' || line[i] == '@') {
+	if (line[i] == '-' || line[i] == '@') {
 		*off = i + 1;
 		return(line[i]);
 	}
@@ -74,18 +82,33 @@ parse_code_meta(const char *line, size_t offset, ssize_t nread) {
 }
 
 void
-print_line(const char *line, size_t nread, size_t off) {
+print_line(const char *line, size_t nread, size_t off, int incode) {
 	size_t i, j;
 	char esc, eesc, *buff, *buff2;
 
 	i = off;
 	while (i < nread) {
-		for (j = i; j < nread && line[j] != '&' && line[j] != '<' && line[j] != '>' && line[j] != '*' && line[j] != '_' && line[j] != '`' && line[j] != '\\'; ++j);
+        if (incode)
+            for (j = i; j < nread && line[j] != '&' && line[j] != '<' && line[j] != '>' && line[j] != '\\'; ++j);
+        else
+            for (j = i; j < nread && line[j] != '&' && line[j] != '<' && line[j] != '>' && line[j] != '*' && line[j] != '_' && line[j] != '`' && line[j] != '\\'; ++j);
 		if (j > i) {
 write:
 			fwrite(line + i, 1, j - i, stdout);
 		}
-		if (j == nread) break;
+		if (j >= nread) break;
+        if (incode) {
+            esc = line[j];
+            i = ++j;
+            if      (esc == '&') { printf("&amp;"); continue; }
+            else if (esc == '<') { printf("&lt;");  continue; }
+            else if (esc == '>') { printf("&gt;");  continue; }
+        }
+        /* todo: macro */
+        if (incode && line[j] != '&' && line[j] != '<' && line[j] != '>' && line[j] != '*' && line[j] != '_' && line[j] != '`' && line[j] != '\\') {
+            fwrite(line + i - 2, 1, 2, stdout);
+            continue;
+        }
 		esc = line[j];
 		eesc = esc;
 		i = j + 1;
@@ -187,7 +210,7 @@ main(int argc, char **argv) {
 				puts("    ```");
 			}
 			continue;
-		} else if ((state == S_NOTHING || state == S_IN_UL) && lty == '*') {
+		} else if ((state == S_NOTHING || state == S_IN_UL) && lty == '-') {
 			line[--nread] = 0; /* maybe ub, idk */
 			if (state == S_NOTHING) {
 				puts("<ul>");
@@ -198,7 +221,7 @@ main(int argc, char **argv) {
 				puts("</li>");
 			}
 			printf("<li>");
-			print_line(line, nread, off);
+			print_line(line, nread, off, 0);
 			flags |= F_LI_WAIT_CLOSE;
 			continue;
 		} else if ((state == S_NOTHING || state == S_IN_OL) && lty == '@') {
@@ -212,7 +235,7 @@ main(int argc, char **argv) {
 				puts("</li>");
 			}
 			printf("<li>");
-			print_line(line, nread, off);
+			print_line(line, nread, off, 0);
 			flags |= F_LI_WAIT_CLOSE;
 			continue;
 		} else if (lty > 0 && state == S_NOTHING) {
@@ -226,13 +249,12 @@ main(int argc, char **argv) {
 			puts("<p>");
 		}
 
-		if (state != S_IN_CODE)
-			print_line(line, nread, 0);
-		else
-			fwrite(line, 1, nread, stdout);
+        print_line(line, nread, 0, state == S_IN_CODE);
 	}
 	if (state == S_IN_P)
 		puts("</p>");
 	else if (flags & F_LI_WAIT_CLOSE)
 		puts("</li>");
+
+    return(0);
 }
